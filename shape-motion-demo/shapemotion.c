@@ -17,18 +17,19 @@
 #define GREEN_LED BIT6
 
 
-AbRect rect10 = {abRectGetBounds, abRectCheck, {12,4}}; /**< 12x4 rectangle */
+AbRect rect11 = {abRectGetBounds, abRectCheck, {4,14}};
+AbRect rect10 = {abRectGetBounds, abRectCheck, {4,14}}; /**< 12x4 rectangle */
 
 AbRectOutline fieldOutline = {	/* playing field */
   abRectOutlineGetBounds, abRectOutlineCheck,   
   {screenWidth/2 - 10, screenHeight/2 - 10}
 };
 
-Layer layer3 = {		/**< Layer with an violet circle */
-  (AbShape *)&circle8,
+Layer ball = {		/**< Layer with an violet circle */
+  (AbShape *)&circle4,
   {(screenWidth/2)+10, (screenHeight/2)+5}, /**< bit below & right of center */
   {0,0}, {0,0},				    /* last & next pos */
-  COLOR_VIOLET,
+  COLOR_WHITE,
   0,
 };
 
@@ -38,12 +39,20 @@ Layer fieldLayer = {		/* playing field as a layer */
   {screenWidth/2, screenHeight/2},/**< center */
   {0,0}, {0,0},				    /* last & next pos */
   COLOR_BLACK,
-  &layer3
+  &ball
 };
 
-Layer layer1 = {		/**< Layer with a red square */
+Layer rightBar = {		/**< Layer with a red square */
   (AbShape *)&rect10,
-  {screenWidth/2, screenHeight-20}, /**< center */
+  {screenWidth-15, screenHeight/2}, /**< center */
+  {0,0}, {0,0},				    /* last & next pos */
+  COLOR_RED,
+  &fieldLayer,
+};
+
+Layer leftBar = {		/**< Layer with a red square */
+  (AbShape *)&rect11,
+  {screenWidth/2, screenHeight/2}, /**< center */
   {0,0}, {0,0},				    /* last & next pos */
   COLOR_RED,
   &fieldLayer,
@@ -60,14 +69,9 @@ typedef struct MovLayer_s {
 } MovLayer;
 
 /* initial value of {0,0} will be overwritten */
-MovLayer ml3 = { &layer3, {1,1}, 0 }; /**< not all layers move */
-MovLayer ml1 = { &layer1, {5,0}, &ml3 }; 
-
-
-
-
-
-
+MovLayer ml3 = { &ball, {1,1}, 0 }; /**< not all layers move */
+MovLayer ml1 = { &rightBar, {0,0}, 0 };
+MovLayer ml2 = { &leftBar, {0,0}, 0 };
 
 movLayerDraw(MovLayer *movLayers, Layer *layers)
 {
@@ -152,12 +156,12 @@ void main()
   configureClocks();
   lcd_init();
   shapeInit();
-  p2sw_init(1);
+  p2sw_init(15);
 
   shapeInit();
 
-  layerInit(&layer1);
-  layerDraw(&layer1);
+  layerInit(&rightBar);
+  layerDraw(&rightBar);
 
 
   layerGetBounds(&fieldLayer, &fieldFence);
@@ -170,11 +174,12 @@ void main()
   for(;;) { 
     while (!redrawScreen) { /**< Pause CPU if screen doesn't need updating */
       P1OUT &= ~GREEN_LED;    /**< Green led off witHo CPU */
+      readSw();
       or_sr(0x10);	      /**< CPU OFF */
     }
     P1OUT |= GREEN_LED;       /**< Green led on when CPU on */
     redrawScreen = 0;
-    movLayerDraw(&ml1, &layer1);
+    movLayerDraw(&ml1, &rightBar);
   }
 }
 
@@ -191,4 +196,35 @@ void wdt_c_handler()
     count = 0;
   }
   P1OUT &= ~GREEN_LED;		    /**< Green LED off when cpu off */
+}
+
+int readSw(){
+  while (1) {
+    u_int switches = p2sw_read(), i;
+    //char str[5];
+
+    if(!(switches & (1<<0)))
+      ml1.velocity.axes[1] = -5;
+    else if(!(switches & (1<<1)))
+      ml1.velocity.axes[1] = 5;
+    else
+      ml1.velocity.axes[1] = 0;
+
+    /*
+    for (i = 0; i < 4; i++){
+      if(i == 0){
+        ml1.velocity.axes[0] = (switches & (1<<i)) ? 0 : 5;
+	j = 1;
+      }
+      else if(i == 1){
+	ml1.velocity.axes[0] = (switches & (1<<i)) ? 0 : -5;
+	j = 1;
+      }
+    }
+    */
+    //  str[i] = (switches & (1<<i)) ? '-' : '0'+i;
+    //str[4] = 0;
+    //drawString5x7(20,20, str, COLOR_GREEN, COLOR_BLUE);
+    return;
+  }
 }
