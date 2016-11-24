@@ -16,6 +16,8 @@
 
 #define GREEN_LED BIT6
 
+char scoreRed[6] = "Red: 0";
+char scoreBlue[10] = "Blue: 0   ";
 
 AbRect rect11 = {abRectGetBounds, abRectCheck, {4,14}};
 AbRect rect10 = {abRectGetBounds, abRectCheck, {4,14}}; /**< 12x4 rectangle */
@@ -26,7 +28,7 @@ AbRectOutline fieldOutline = {	/* playing field */
 };
 
 Layer ball = {		/**< Layer with an violet circle */
-  (AbShape *)&circle4,
+  (AbShape *)&circle5,
   {(screenWidth/2)+10, (screenHeight/2)+5}, /**< bit below & right of center */
   {0,0}, {0,0},				    /* last & next pos */
   COLOR_WHITE,
@@ -44,18 +46,18 @@ Layer fieldLayer = {		/* playing field as a layer */
 
 Layer rightBar = {		/**< Layer with a red square */
   (AbShape *)&rect10,
-  {screenWidth-15, screenHeight/2}, /**< center */
+  {screenWidth-10, screenHeight/2}, /**< center */
   {0,0}, {0,0},				    /* last & next pos */
-  COLOR_RED,
+  COLOR_BLUE,
   &fieldLayer,
 };
 
 Layer leftBar = {		/**< Layer with a red square */
   (AbShape *)&rect11,
-  {screenWidth/2, screenHeight/2}, /**< center */
+  {10, screenHeight/2}, /**< center */
   {0,0}, {0,0},				    /* last & next pos */
   COLOR_RED,
-  &fieldLayer,
+  &rightBar,
 };
 
 /** Moving Layer
@@ -69,9 +71,9 @@ typedef struct MovLayer_s {
 } MovLayer;
 
 /* initial value of {0,0} will be overwritten */
-MovLayer ml3 = { &ball, {1,1}, 0 }; /**< not all layers move */
-MovLayer ml1 = { &rightBar, {0,0}, 0 };
-MovLayer ml2 = { &leftBar, {0,0}, 0 };
+MovLayer ml3 = { &ball, {2,2}, 0 }; /**< not all layers move */
+MovLayer ml2 = { &leftBar, {0,0}, &ml3 };
+MovLayer ml1 = { &rightBar, {0,0}, &ml2 };
 
 movLayerDraw(MovLayer *movLayers, Layer *layers)
 {
@@ -160,12 +162,10 @@ void main()
 
   shapeInit();
 
-  layerInit(&rightBar);
-  layerDraw(&rightBar);
-
+  layerInit(&leftBar);
+  layerDraw(&leftBar);
 
   layerGetBounds(&fieldLayer, &fieldFence);
-
 
   enableWDTInterrupts();      /**< enable periodic interrupt */
   or_sr(0x8);	              /**< GIE (enable interrupts) */
@@ -174,12 +174,15 @@ void main()
   for(;;) { 
     while (!redrawScreen) { /**< Pause CPU if screen doesn't need updating */
       P1OUT &= ~GREEN_LED;    /**< Green led off witHo CPU */
-      readSw();
+      readSwRight();
+      readSwLeft();
+      drawString5x7(0,0,scoreRed,COLOR_WHITE,COLOR_BLACK);
+      drawString5x7(screenWidth/2+10,screenHeight-10,scoreBlue,COLOR_WHITE,COLOR_BLACK);
       or_sr(0x10);	      /**< CPU OFF */
     }
     P1OUT |= GREEN_LED;       /**< Green led on when CPU on */
     redrawScreen = 0;
-    movLayerDraw(&ml1, &rightBar);
+    movLayerDraw(&ml1, &leftBar);
   }
 }
 
@@ -198,33 +201,32 @@ void wdt_c_handler()
   P1OUT &= ~GREEN_LED;		    /**< Green LED off when cpu off */
 }
 
-int readSw(){
+int readSwRight(){
   while (1) {
     u_int switches = p2sw_read(), i;
     //char str[5];
 
     if(!(switches & (1<<0)))
-      ml1.velocity.axes[1] = -5;
+      ml2.velocity.axes[1] = -5;
     else if(!(switches & (1<<1)))
+      ml2.velocity.axes[1] = 5;
+    else
+      ml2.velocity.axes[1] = 0;
+    return;
+  }
+}
+
+int readSwLeft(){
+  while (1) {
+    u_int switches = p2sw_read(), i;
+    //char str[5];
+
+    if(!(switches & (1<<2)))
+      ml1.velocity.axes[1] = -5;
+    else if(!(switches & (1<<3)))
       ml1.velocity.axes[1] = 5;
     else
       ml1.velocity.axes[1] = 0;
-
-    /*
-    for (i = 0; i < 4; i++){
-      if(i == 0){
-        ml1.velocity.axes[0] = (switches & (1<<i)) ? 0 : 5;
-	j = 1;
-      }
-      else if(i == 1){
-	ml1.velocity.axes[0] = (switches & (1<<i)) ? 0 : -5;
-	j = 1;
-      }
-    }
-    */
-    //  str[i] = (switches & (1<<i)) ? '-' : '0'+i;
-    //str[4] = 0;
-    //drawString5x7(20,20, str, COLOR_GREEN, COLOR_BLUE);
     return;
   }
 }
