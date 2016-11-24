@@ -24,7 +24,7 @@ AbRect rect10 = {abRectGetBounds, abRectCheck, {4,14}}; /**< 12x4 rectangle */
 
 AbRectOutline fieldOutline = {	/* playing field */
   abRectOutlineGetBounds, abRectOutlineCheck,   
-  {screenWidth/2 - 10, screenHeight/2 - 10}
+  {screenWidth/2, screenHeight/2 - 10}
 };
 
 Layer ball = {		/**< Layer with an violet circle */
@@ -178,6 +178,7 @@ void main()
       readSwLeft();
       drawString5x7(0,0,scoreRed,COLOR_WHITE,COLOR_BLACK);
       drawString5x7(screenWidth/2+10,screenHeight-10,scoreBlue,COLOR_WHITE,COLOR_BLACK);
+      checkScore();
       or_sr(0x10);	      /**< CPU OFF */
     }
     P1OUT |= GREEN_LED;       /**< Green led on when CPU on */
@@ -202,9 +203,7 @@ void wdt_c_handler()
 }
 
 int readSwRight(){
-  while (1) {
     u_int switches = p2sw_read(), i;
-    //char str[5];
 
     if(!(switches & (1<<0)))
       ml2.velocity.axes[1] = -5;
@@ -212,14 +211,10 @@ int readSwRight(){
       ml2.velocity.axes[1] = 5;
     else
       ml2.velocity.axes[1] = 0;
-    return;
-  }
 }
 
 int readSwLeft(){
-  while (1) {
     u_int switches = p2sw_read(), i;
-    //char str[5];
 
     if(!(switches & (1<<2)))
       ml1.velocity.axes[1] = -5;
@@ -227,6 +222,16 @@ int readSwLeft(){
       ml1.velocity.axes[1] = 5;
     else
       ml1.velocity.axes[1] = 0;
-    return;
+}
+int checkScore(){
+  if(ball.pos.axes[0] > screenWidth){
+    scoreBlue[6]++;
+    ball.posNext.axes[0] = screenWidth/2;
+    ball.posNext.axes[1] = screenHeight/2;
+  }
+  else if(ball.pos.axes[0] < 0){
+    scoreRed[5]++;
+    ball.posNext.axes[0] = screenWidth/2;
+    ball.posNext.axes[1] = screenHeight/2;
   }
 }
