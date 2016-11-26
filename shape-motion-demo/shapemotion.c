@@ -71,7 +71,7 @@ typedef struct MovLayer_s {
 } MovLayer;
 
 /* initial value of {0,0} will be overwritten */
-MovLayer ml3 = { &ball, {2,2}, 0 }; /**< not all layers move */
+MovLayer ml3 = { &ball, {1,2}, 0 }; /**< not all layers move */
 MovLayer ml2 = { &leftBar, {0,0}, &ml3 };
 MovLayer ml1 = { &rightBar, {0,0}, &ml2 };
 
@@ -170,7 +170,6 @@ void main()
   enableWDTInterrupts();      /**< enable periodic interrupt */
   or_sr(0x8);	              /**< GIE (enable interrupts) */
 
-
   for(;;) { 
     while (!redrawScreen) { /**< Pause CPU if screen doesn't need updating */
       P1OUT &= ~GREEN_LED;    /**< Green led off witHo CPU */
@@ -179,6 +178,7 @@ void main()
       drawString5x7(0,0,scoreRed,COLOR_WHITE,COLOR_BLACK);
       drawString5x7(screenWidth/2+10,screenHeight-10,scoreBlue,COLOR_WHITE,COLOR_BLACK);
       checkScore();
+      checkCollisionBall();
       or_sr(0x10);	      /**< CPU OFF */
     }
     P1OUT |= GREEN_LED;       /**< Green led on when CPU on */
@@ -190,9 +190,9 @@ void main()
 /** Watchdog timer interrupt handler. 15 interrupts/sec */
 void wdt_c_handler()
 {
-  static short count = 0;
+  static short count =0;
   P1OUT |= GREEN_LED;		      /**< Green LED on when cpu on */
-  count ++;
+  count++;
   if (count == 15) {
     mlAdvance(&ml1, &fieldFence);
     if(p2sw_read())
@@ -225,13 +225,51 @@ int readSwLeft(){
 }
 int checkScore(){
   if(ball.pos.axes[0] > screenWidth){
-    scoreBlue[6]++;
+    scoreRed[5]++;
+    if(scoreRed[5] == '5'){
+      ml3.velocity.axes[0] = 0;
+      ml3.velocity.axes[1] = 0;
+      drawString5x7(screenWidth/2-30,screenHeight/2-40,"RED WINS!",COLOR_WHITE,COLOR_BLACK);
+    }
+    else{
+      ml3.velocity.axes[0] = 1;
+      ml3.velocity.axes[1] = 2;
+    }
     ball.posNext.axes[0] = screenWidth/2;
     ball.posNext.axes[1] = screenHeight/2;
   }
   else if(ball.pos.axes[0] < 0){
-    scoreRed[5]++;
+    scoreBlue[6]++;
+    if(scoreBlue[6] == '5'){
+      ml3.velocity.axes[0] = 0;
+      ml3.velocity.axes[1] = 0;
+      drawString5x7(screenWidth/2-30,screenHeight/2-40,"BLUE WINS!",COLOR_WHITE,COLOR_BLACK);
+    }
+    else{
+      ml3.velocity.axes[0] = -1;
+      ml3.velocity.axes[1] = -2;
+    }
     ball.posNext.axes[0] = screenWidth/2;
     ball.posNext.axes[1] = screenHeight/2;
   }
+}
+int checkCollisionBall(){
+  if(withinPaddle()){
+    u_char axis;
+    Vec2 newPos;
+    ml3.velocity.axes[0] = -ml3.velocity.axes[0];
+    ml3.velocity.axes[0] += ml3.velocity.axes[0];
+    ml3.velocity.axes[1] += ml3.velocity.axes[1];
+  }
+}
+
+int withinPaddle(){
+  Vec2 ballRight = {ball.pos.axes[0]+circle5.radius,ball.pos.axes[1]};
+  Vec2 ballLeft = {ball.pos.axes[0]-circle5.radius,ball.pos.axes[1]};
+
+  if(abRectCheck(&rect10,&rightBar.pos,&ballRight))
+    return 1;
+  else if(abRectCheck(&rect11,&leftBar.pos,&ballLeft))
+    return 1;
+  return 0;
 }
