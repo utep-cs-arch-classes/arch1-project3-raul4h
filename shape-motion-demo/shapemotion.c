@@ -255,11 +255,27 @@ int checkScore(){
 }
 int checkCollisionBall(){
   if(withinPaddle()){
+    static char count = 0;
     u_char axis;
-    Vec2 newPos;
     ml3.velocity.axes[0] = -ml3.velocity.axes[0];
-    ml3.velocity.axes[0] += ml3.velocity.axes[0];
-    ml3.velocity.axes[1] += ml3.velocity.axes[1];
+    if(ml3.velocity.axes[0] > 0){
+      ml3.velocity.axes[0]++;
+      count++;
+    }
+    else{
+	ml3.velocity.axes[0]--;
+	count++;
+    }
+    if(count == 2){
+      if(ml3.velocity.axes[1] > 0){
+	ml3.velocity.axes[1]++;
+	count++;
+      }
+      else{
+	ml3.velocity.axes[1]--;
+	count++;
+      }
+    }
   }
 }
 
