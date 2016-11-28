@@ -13,11 +13,15 @@
 #include <p2switches.h>
 #include <shape.h>
 #include <abCircle.h>
+#include "buzzer.h"
 
 #define GREEN_LED BIT6
 
 char scoreRed[6] = "Red: 0";
 char scoreBlue[10] = "Blue: 0   ";
+
+static short duration = 0;
+static short note = 0;
 
 AbRect rect11 = {abRectGetBounds, abRectCheck, {4,14}};
 AbRect rect10 = {abRectGetBounds, abRectCheck, {4,14}}; /**< 12x4 rectangle */
@@ -132,8 +136,12 @@ void mlAdvance(MovLayer *ml, Region *fence)
     for (axis = 0; axis < 2; axis ++) {
       if ((shapeBoundary.topLeft.axes[axis] < fence->topLeft.axes[axis]) ||
 	  (shapeBoundary.botRight.axes[axis] > fence->botRight.axes[axis]) ) {
-	int velocity = ml->velocity.axes[axis] = -ml->velocity.axes[axis];
-	newPos.axes[axis] += (2*velocity);
+	if(ml->layer != &rightBar || ml->layer != &leftBar){
+	  int velocity = ml->velocity.axes[axis] = -ml->velocity.axes[axis];
+	  newPos.axes[axis] += (2*velocity);
+	}
+	else
+	  ml->velocity.axes[axis] = 0;
       }	/**< if outside of fence */
     } /**< for axis */
     ml->layer->posNext = newPos;
@@ -161,6 +169,7 @@ void main()
   p2sw_init(15);
 
   shapeInit();
+  buzzer_init();
 
   layerInit(&leftBar);
   layerDraw(&leftBar);
@@ -191,19 +200,26 @@ void main()
 void wdt_c_handler()
 {
   static short count =0;
+  static short count2 = 0;
   P1OUT |= GREEN_LED;		      /**< Green LED on when cpu on */
   count++;
+  count2++;
   if (count == 15) {
+    buzzer_set_period(0);
     mlAdvance(&ml1, &fieldFence);
     if(p2sw_read())
       redrawScreen = 1;
     count = 0;
   }
+  if(count2 == duration){
+    buzzer_set_period(note);
+    count2 = 0;
+  }
   P1OUT &= ~GREEN_LED;		    /**< Green LED off when cpu off */
 }
 
 int readSwRight(){
-    u_int switches = p2sw_read(), i;
+  u_int switches = p2sw_read();
 
     if(!(switches & (1<<0)))
       ml2.velocity.axes[1] = -5;
@@ -214,7 +230,7 @@ int readSwRight(){
 }
 
 int readSwLeft(){
-    u_int switches = p2sw_read(), i;
+  u_int switches = p2sw_read();
 
     if(!(switches & (1<<2)))
       ml1.velocity.axes[1] = -5;
@@ -229,6 +245,7 @@ int checkScore(){
     if(scoreRed[5] == '5'){
       ml3.velocity.axes[0] = 0;
       ml3.velocity.axes[1] = 0;
+      playWinningSong();
       drawString5x7(screenWidth/2-30,screenHeight/2-40,"RED WINS!",COLOR_WHITE,COLOR_BLACK);
     }
     else{
@@ -243,6 +260,7 @@ int checkScore(){
     if(scoreBlue[6] == '5'){
       ml3.velocity.axes[0] = 0;
       ml3.velocity.axes[1] = 0;
+      playWinningSong();
       drawString5x7(screenWidth/2-30,screenHeight/2-40,"BLUE WINS!",COLOR_WHITE,COLOR_BLACK);
     }
     else{
@@ -257,6 +275,7 @@ int checkCollisionBall(){
   if(withinPaddle()){
     static char count = 0;
     u_char axis;
+    buzzer_set_period(1000);
     ml3.velocity.axes[0] = -ml3.velocity.axes[0];
     if(ml3.velocity.axes[0] > 0){
       ml3.velocity.axes[0]++;
@@ -288,4 +307,19 @@ int withinPaddle(){
   else if(abRectCheck(&rect11,&leftBar.pos,&ballLeft))
     return 1;
   return 0;
+}
+int playWinningSong(){
+  static char i = 0;
+  switch(i){
+  case 0:
+    duration = 50;
+    note = 2000;
+    i++;
+    break;
+  case 1:
+    duration = 250;
+    note = 3000;
+    i = 0;
+    break;
+  }
 }
