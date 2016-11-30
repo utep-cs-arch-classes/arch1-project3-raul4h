@@ -2,31 +2,23 @@
 
 This project containts the following files:
 
-bbmain.c: Main program
+shapemotion.c: Main program
 
 buzzer.c: Initialize buzzer and set period
 
 buzzer.h Header file of buzzer.c
 
-led.c: Initialize LED's and some implementation of how LED's react to certain events
+score.s: Assembly part of code for increasing score
 
-led.h: Header file of led.c
-
-wdInterruptHandler.c: Interrupt handler and state machines for msp430 behaviour.
+wdt_handler.s
 
 ## Description
-The Music Box 2.0 comes with 4 buttons and a green and red LED, the Music Box 2.0 comes with two games:
+MSP430 PONG! is a symple game which let's you play one of the electronic games in the market right on your msp430, there are two players.
 
-1. Music player
-2. Piano
+1.Red
+2.Blue
 
-The Music Box 2.0 start in the Music Player mode, indicated by the red light on. To start playing songs just press either button 1,2 or 3. the songs including in this version are:
-
-1. Epona's Song - The Legend of Zelda
-2. Zelda's Lullaby - The Legend of Zelda
-3. El Sonidito - Hechizeros Band
-
-To go to piano mode you would just need to press the button number 4 and the light would change to color green indicating that Piano mode is on. The flashing speed of the green light is indicated by the note in the piano.
+The first two buttons of each side move the correspondent paddle up or down. The first player to reach a score of 5 wins and to start playing again you just hit the reset button on the msp430 board.
 
 To load code into msp430, try:
 ~~~
@@ -36,9 +28,3 @@ To clean repository, try:
 ~~~
 $ make clean
 ~~~
-
-Credits:
-
--Jose Andres Cabrera - Understanding notes
-
-https://answers.yahoo.com/question/index?qid=20101201100813AAwDHyl - To know the notes in The Legend of Zelda songs
