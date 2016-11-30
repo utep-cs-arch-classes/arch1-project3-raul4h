@@ -1,11 +1,10 @@
-/** \file shapemotion.c
- *  \brief This is a simple shape motion demo.
- *  This demo creates two layers containing shapes.
- *  One layer contains a rectangle and the other a circle.
- *  While the CPU is running the green LED is on, and
- *  when the screen does not need to be redrawn the CPU
- *  is turned off along with the green LED.
- */  
+/*
+Author: Raul Hinostroza
+ID: 80532365
+Instructor: Eric Freudenthal
+TA: Daniel Cervantes
+Last Date of Modification: 11/29/2016 at 10:30 PM
+*/
 #include <msp430.h>
 #include <libTimer.h>
 #include <lcdutils.h>
@@ -24,15 +23,15 @@ static short duration = 15;
 static short note = 0;
 int end = 0;
 
-AbRect rect11 = {abRectGetBounds, abRectCheck, {4,14}};
-AbRect rect10 = {abRectGetBounds, abRectCheck, {4,14}}; /**< 12x4 rectangle */
+AbRect rect11 = {abRectGetBounds, abRectCheck, {4,14}};		//Left Paddle
+AbRect rect10 = {abRectGetBounds, abRectCheck, {4,14}}; 	//Right paddle
 
 AbRectOutline fieldOutline = {	/* playing field */
   abRectOutlineGetBounds, abRectOutlineCheck,   
   {screenWidth/2, screenHeight/2 - 10}
 };
 
-Layer ball = {		/**< Layer with an violet circle */
+Layer ball = {		/**< Layer with an white circle */
   (AbShape *)&circle5,
   {(screenWidth/2)+10, (screenHeight/2)+5}, /**< bit below & right of center */
   {0,0}, {0,0},				    /* last & next pos */
@@ -49,7 +48,7 @@ Layer fieldLayer = {		/* playing field as a layer */
   &ball
 };
 
-Layer rightBar = {		/**< Layer with a red square */
+Layer rightBar = {		/**< Layer with right paddle */
   (AbShape *)&rect10,
   {screenWidth-10, screenHeight/2}, /**< center */
   {0,0}, {0,0},				    /* last & next pos */
@@ -57,7 +56,7 @@ Layer rightBar = {		/**< Layer with a red square */
   &fieldLayer,
 };
 
-Layer leftBar = {		/**< Layer with a red square */
+Layer leftBar = {		/**< Layer with left paddle */
   (AbShape *)&rect11,
   {10, screenHeight/2}, /**< center */
   {0,0}, {0,0},				    /* last & next pos */
@@ -77,8 +76,8 @@ typedef struct MovLayer_s {
 
 /* initial value of {0,0} will be overwritten */
 MovLayer ml3 = { &ball, {1,2}, 0 }; /**< not all layers move */
-MovLayer ml2 = { &leftBar, {0,0}, &ml3 };
-MovLayer ml1 = { &rightBar, {0,0}, &ml2 };
+MovLayer ml2 = { &leftBar, {0,0}, &ml3 };	//Left Paddle
+MovLayer ml1 = { &rightBar, {0,0}, &ml2 };	//Right Paddle
 
 movLayerDraw(MovLayer *movLayers, Layer *layers)
 {
@@ -136,13 +135,9 @@ void mlAdvance(MovLayer *ml, Region *fence)
     abShapeGetBounds(ml->layer->abShape, &newPos, &shapeBoundary);
     for (axis = 0; axis < 2; axis ++) {
       if ((shapeBoundary.topLeft.axes[axis] < fence->topLeft.axes[axis]) ||
-	  (shapeBoundary.botRight.axes[axis] > fence->botRight.axes[axis]) ) {
-	if(ml->layer != &rightBar || ml->layer != &leftBar){
+	  (shapeBoundary.botRight.axes[axis] > fence->botRight.axes[axis]) ){
 	  int velocity = ml->velocity.axes[axis] = -ml->velocity.axes[axis];
 	  newPos.axes[axis] += (2*velocity);
-	}
-	else
-	  ml->velocity.axes[axis] = 0;
       }	/**< if outside of fence */
     } /**< for axis */
     ml->layer->posNext = newPos;
@@ -167,7 +162,7 @@ void main()
   configureClocks();
   lcd_init();
   shapeInit();
-  p2sw_init(15);
+  p2sw_init(15);		//Init with 4 buttons
 
   shapeInit();
   buzzer_init();
@@ -183,13 +178,12 @@ void main()
   for(;;) { 
     while (!redrawScreen) { /**< Pause CPU if screen doesn't need updating */
       P1OUT &= ~GREEN_LED;    /**< Green led off witHo CPU */
-      int switches = p2sw_read();
-      readSwRight(&ml2);
-      readSwLeft(&ml1);
-      drawString5x7(0,0,scoreRed,COLOR_WHITE,COLOR_BLACK);
-      drawString5x7(screenWidth/2+10,screenHeight-10,scoreBlue,COLOR_WHITE,COLOR_BLACK);
-      checkScore();
-      checkCollisionBall();
+      readSwRight(&ml2);	//Read right bar button input
+      readSwLeft(&ml1);		//Read left bar button input
+      drawString5x7(0,0,scoreRed,COLOR_WHITE,COLOR_BLACK);	//Draw and update red score
+      drawString5x7(screenWidth/2+10,screenHeight-10,scoreBlue,COLOR_WHITE,COLOR_BLACK);	//Draw and update blue score
+      checkScore();				//Update score
+      checkCollisionBall();			//Bounce ball of paddles
       or_sr(0x10);	      /**< CPU OFF */
     }
     P1OUT |= GREEN_LED;       /**< Green led on when CPU on */
@@ -212,7 +206,7 @@ void wdt_c_handler()
       redrawScreen = 1;
     count = 0;
   }
-  if(count2 == duration){
+  if(count2 == duration){		//Play note when ball hits paddle
     buzzer_set_period(note);
     count2 = 0;
   }
@@ -222,50 +216,50 @@ void wdt_c_handler()
 int readSwRight(MovLayer* ml){
   u_int switches = p2sw_read();
 
-  if(!(switches & (1<<0))){
+  if(!(switches & (1<<0))){		//If siwtch 1 is pressed, move paddle up
      ml->velocity.axes[1] = -5;
     }
-    else if(!(switches & (1<<1)))
+    else if(!(switches & (1<<1)))	//If switch 2 is pressed, move paddle down
       ml->velocity.axes[1] = 5;
-    else
+    else				//Else don't move
       ml->velocity.axes[1] = 0;
 }
   
 int readSwLeft(MovLayer* ml){
   u_int switches = p2sw_read();
 
-    if(!(switches & (1<<2)))
+    if(!(switches & (1<<2)))		//If switch 3 is pressed, move paddle up
       ml->velocity.axes[1] = -5;
-    else if(!(switches & (1<<3)))
+    else if(!(switches & (1<<3)))	//If switch 4 is pressed, move paddle down
       ml->velocity.axes[1] = 5;
-    else
+    else				//Else don't move
       ml->velocity.axes[1] = 0;
 }
 int checkScore(){
-  if(ball.pos.axes[0] > screenWidth){
+  if(ball.pos.axes[0] > screenWidth){	//If position of ball is outside of width increase red score
     increaseScoreRed(scoreRed);
-    if(scoreRed[5] == '5'){
+    if(scoreRed[5] == '5'){		//Red Wins
       ml3.velocity.axes[0] = 0;
       ml3.velocity.axes[1] = 0;
       drawString5x7(screenWidth/2-30,screenHeight/2-40,"RED WINS!",COLOR_WHITE,COLOR_BLACK);
       end = 1;
     }
-    else{
+    else{				//Reset ball
       ml3.velocity.axes[0] = 1;
       ml3.velocity.axes[1] = 2;
     }
     ball.posNext.axes[0] = screenWidth/2;
     ball.posNext.axes[1] = screenHeight/2;
   }
-  else if(ball.pos.axes[0] < 0){
+  else if(ball.pos.axes[0] < 0){	//If ball is less than 0 in width, increase blue
     increaseScoreBlue(scoreBlue);
-    if(scoreBlue[6] == '5'){
+    if(scoreBlue[6] == '5'){		//Blue wins
       ml3.velocity.axes[0] = 0;
       ml3.velocity.axes[1] = 0;
       drawString5x7(screenWidth/2-30,screenHeight/2-40,"BLUE WINS!",COLOR_WHITE,COLOR_BLACK);
       end = 1;
     }
-    else{
+    else{				//Reset ball
       ml3.velocity.axes[0] = -1;
       ml3.velocity.axes[1] = -2;
     }
@@ -274,12 +268,11 @@ int checkScore(){
   }
 }
 int checkCollisionBall(){
-  if(withinPaddle()){
+  if(withinPaddle()){			
     static char count = 0;
-    u_char axis;
-    buzzer_set_period(1000);
-    ml3.velocity.axes[0] = -ml3.velocity.axes[0];
-    if(ml3.velocity.axes[0] > 0){
+    buzzer_set_period(1000);		//Make sound
+    ml3.velocity.axes[0] = -ml3.velocity.axes[0];	//Invert direction in x-axis
+    if(ml3.velocity.axes[0] > 0){			//Everytime ball hits paddle, increase speed on x-axis to increase difficulty
       ml3.velocity.axes[0]++;
       count++;
     }
@@ -287,7 +280,7 @@ int checkCollisionBall(){
 	ml3.velocity.axes[0]--;
 	count++;
     }
-    if(count == 2){
+    if(count == 2){					//For every two increases in x-axis, increase 1 in y-axis
       if(ml3.velocity.axes[1] > 0){
 	ml3.velocity.axes[1]++;
 	count++;
@@ -299,10 +292,10 @@ int checkCollisionBall(){
     }
   }
 }
-
+//Use abRectCheck to see if ball hits paddle
 int withinPaddle(){
-  Vec2 ballRight = {ball.pos.axes[0]+circle5.radius,ball.pos.axes[1]};
-  Vec2 ballLeft = {ball.pos.axes[0]-circle5.radius,ball.pos.axes[1]};
+  Vec2 ballRight = {ball.pos.axes[0]+circle5.radius,ball.pos.axes[1]};		//Ball with right paddle
+  Vec2 ballLeft = {ball.pos.axes[0]-circle5.radius,ball.pos.axes[1]};		//Ball with left paddle
 
   if(abRectCheck(&rect10,&rightBar.pos,&ballRight))
     return 1;
