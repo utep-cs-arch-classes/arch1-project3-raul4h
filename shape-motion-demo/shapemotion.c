@@ -20,8 +20,9 @@
 char scoreRed[6] = "Red: 0";
 char scoreBlue[10] = "Blue: 0   ";
 
-static short duration = 0;
+static short duration = 15;
 static short note = 0;
+int end = 0;
 
 AbRect rect11 = {abRectGetBounds, abRectCheck, {4,14}};
 AbRect rect10 = {abRectGetBounds, abRectCheck, {4,14}}; /**< 12x4 rectangle */
@@ -182,8 +183,9 @@ void main()
   for(;;) { 
     while (!redrawScreen) { /**< Pause CPU if screen doesn't need updating */
       P1OUT &= ~GREEN_LED;    /**< Green led off witHo CPU */
-      readSwRight();
-      readSwLeft();
+      int switches = p2sw_read();
+      readSwRight(&ml2);
+      readSwLeft(&ml1);
       drawString5x7(0,0,scoreRed,COLOR_WHITE,COLOR_BLACK);
       drawString5x7(screenWidth/2+10,screenHeight-10,scoreBlue,COLOR_WHITE,COLOR_BLACK);
       checkScore();
@@ -205,7 +207,6 @@ void wdt_c_handler()
   count++;
   count2++;
   if (count == 15) {
-    buzzer_set_period(0);
     mlAdvance(&ml1, &fieldFence);
     if(p2sw_read())
       redrawScreen = 1;
@@ -218,35 +219,36 @@ void wdt_c_handler()
   P1OUT &= ~GREEN_LED;		    /**< Green LED off when cpu off */
 }
 
-int readSwRight(){
+int readSwRight(MovLayer* ml){
   u_int switches = p2sw_read();
 
-    if(!(switches & (1<<0)))
-      ml2.velocity.axes[1] = -5;
+  if(!(switches & (1<<0))){
+     ml->velocity.axes[1] = -5;
+    }
     else if(!(switches & (1<<1)))
-      ml2.velocity.axes[1] = 5;
+      ml->velocity.axes[1] = 5;
     else
-      ml2.velocity.axes[1] = 0;
+      ml->velocity.axes[1] = 0;
 }
-
-int readSwLeft(){
+  
+int readSwLeft(MovLayer* ml){
   u_int switches = p2sw_read();
 
     if(!(switches & (1<<2)))
-      ml1.velocity.axes[1] = -5;
+      ml->velocity.axes[1] = -5;
     else if(!(switches & (1<<3)))
-      ml1.velocity.axes[1] = 5;
+      ml->velocity.axes[1] = 5;
     else
-      ml1.velocity.axes[1] = 0;
+      ml->velocity.axes[1] = 0;
 }
 int checkScore(){
   if(ball.pos.axes[0] > screenWidth){
-    scoreRed[5]++;
+    increaseScoreRed(scoreRed);
     if(scoreRed[5] == '5'){
       ml3.velocity.axes[0] = 0;
       ml3.velocity.axes[1] = 0;
-      playWinningSong();
       drawString5x7(screenWidth/2-30,screenHeight/2-40,"RED WINS!",COLOR_WHITE,COLOR_BLACK);
+      end = 1;
     }
     else{
       ml3.velocity.axes[0] = 1;
@@ -256,12 +258,12 @@ int checkScore(){
     ball.posNext.axes[1] = screenHeight/2;
   }
   else if(ball.pos.axes[0] < 0){
-    scoreBlue[6]++;
+    increaseScoreBlue(scoreBlue);
     if(scoreBlue[6] == '5'){
       ml3.velocity.axes[0] = 0;
       ml3.velocity.axes[1] = 0;
-      playWinningSong();
       drawString5x7(screenWidth/2-30,screenHeight/2-40,"BLUE WINS!",COLOR_WHITE,COLOR_BLACK);
+      end = 1;
     }
     else{
       ml3.velocity.axes[0] = -1;
@@ -307,19 +309,4 @@ int withinPaddle(){
   else if(abRectCheck(&rect11,&leftBar.pos,&ballLeft))
     return 1;
   return 0;
-}
-int playWinningSong(){
-  static char i = 0;
-  switch(i){
-  case 0:
-    duration = 50;
-    note = 2000;
-    i++;
-    break;
-  case 1:
-    duration = 250;
-    note = 3000;
-    i = 0;
-    break;
-  }
 }
